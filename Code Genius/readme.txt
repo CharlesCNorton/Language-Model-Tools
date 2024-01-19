@@ -1,57 +1,49 @@
-CodeGenius
-CodeGenius is a Python program that utilizes artificial intelligence to generate new Python code or analyze and improve existing code. It leverages the OpenAI API to provide code generation, analysis, and enhancement capabilities. This program can be run from the command line and follows a series of prompts to guide the user through the process.
+Code Genius
+Code Genius is a Python utility designed to utilize artificial intelligence for the creation, analysis, and enhancement of Python code. It employs the OpenAI API, with an emphasis on the advanced GPT-4 model, to address and circumvent the hardcoded limitations in GPT-3.5 related to runaway cost issues. This tool is operated via the command line and offers a sequence of prompts to guide users in developing new Python scripts or optimizing existing ones.
 
 Prerequisites
-Python 3.x
-OpenAI API key
-OpenAI organization name
+- Python 3.x
+- OpenAI API key
+- OpenAI organization name
 
-Usage
-Set your OpenAI API key and organization name in the openai.api_key and openai.organization variables in the code.
-Run the program: python CodeGenius.py
-Follow the prompts to choose whether to create a new program or analyze an existing one.
-Provide the necessary input based on the chosen option.
-The program will generate, analyze, and enhance the code iteratively based on AI responses.
-At each iteration, you can choose to continue, save the code, or stop the process.
-After completion, you can choose to restart the process or exit the program.
+Usage Instructions
+1. Ensure the script is configured to use the GPT-4 model within the OpenAI API.
+2. Set your OpenAI API key and organization name in the script's openai.api_key and openai.organization variables.
+3. Execute the program: python CodeGenius.py
+4. Follow the prompts to choose between creating a new script or analyzing an existing one.
+5. Provide the necessary input based on your selection.
+6. Code Genius will iteratively generate, analyze, and enhance the code, leveraging GPT-4's advanced capabilities.
+7. After each iteration, choose to continue, save the current code, or end the process.
+8. Upon completion, restart the process or exit the program.
 
 Example Usage
-vbnet
-Copy code
 Python Code Generator and Analyzer
 
-This program uses AI to either generate new Python code or analyze and improve existing code.
-Please follow the prompts to proceed.
+This utility employs AI, specifically GPT-4, to generate new Python code or to analyze and improve existing code. Follow the prompts to proceed.
 
-Create a new program or analyze an existing one? (new/existing): new
-
-What code do you want me to write?: print("Hello, World!")
+- Create a new program or analyze an existing one? (new/existing): new
+- What code do you want me to write?: print("Hello, World!")
 
 Processing initial request...
 Initial code:
-```python
 print("Hello, World!")
-Iteration...
-Assistant's response:
-
-python
-Copy code
-print("Hello, CodeGenius!")
-Do you want to continue to the next step? (y/n): y
 
 Iteration...
-Assistant's response:
+Assistant's response using GPT-4:
+print("Hello, Code Genius!")
 
-python
-Copy code
-print("Hello, CodeGenius!")
-print("Welcome to the world of AI-powered coding!")
-Do you want to continue to the next step? (y/n): s
-Enter filename to save the code: hello.py
+- Continue to the next step? (y/n): y
 
-Do you want to restart the process? (y/n): n
-Goodbye!
+Iteration...
+Assistant's response using GPT-4:
+print("Hello, Code Genius!")
+print("Experience the power of AI-driven coding!")
 
-## License
+- Continue to the next step? (y/n): n
+- Enter filename to save the code: hello.py
 
-This project is licensed under the AGPL-3.0 license.
+- Restart the process? (y/n): n
+- Goodbye!
+
+License
+This project is licensed under the MIT license.
