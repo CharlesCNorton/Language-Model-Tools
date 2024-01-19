@@ -1,5 +1,5 @@
 Code Genius
-Code Genius is a Python utility designed to utilize artificial intelligence for the creation, analysis, and enhancement of Python code. It employs the OpenAI API, with an emphasis on the advanced GPT-4 model, to address and circumvent the hardcoded limitations in GPT-3.5 related to runaway cost issues. This tool is operated via the command line and offers a sequence of prompts to guide users in developing new Python scripts or optimizing existing ones.
+Code Genius is a Python utility designed to utilize artificial intelligence for the creation, analysis, and enhancement of Python code. It employs the OpenAI API, with an emphasis on the advanced GPT-4 model. This tool is operated via the command line and offers a sequence of prompts to guide users in developing new Python scripts or optimizing existing ones.
 
 Prerequisites
 - Python 3.x
