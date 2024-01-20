@@ -1,7 +1,7 @@
 GGUF Converter
 ==============
 
-GGUF Converter is a Python tool for converting HuggingFace models to the GGUF format, optimized for large language models with llama.cpp.
+GGUF Converter is a Python tool for converting HuggingFace models to the single-file GGUF format, optimized for large language models with llama.cpp.
 
 Features
 --------
