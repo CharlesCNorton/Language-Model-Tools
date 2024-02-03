@@ -3,7 +3,7 @@ AutoMUD README
 
 Description
 -----------
-AutoMUD is an innovative interface that transforms interactions within Multi-User Dungeons (MUDs) through the advanced natural language processing capabilities of OpenAI's GPT-4. This state-of-the-art AI model empowers AutoMUD to seamlessly convert intuitive player commands into precise, game-ready actions, making the complex and richly detailed worlds of MUDs more accessible to both newcomers and seasoned players alike. By leveraging GPT-4, AutoMUD not only simplifies the command input process but also enhances the gaming experience with adaptive learning and personalized interactions, setting a new standard for AI-assisted gaming by merging the depth of MUDs with the simplicity and flexibility of natural language.
+AutoMUD is an innovative interface that allows GPT-4 to play multi-user dungeons. In other words, this script transforms interactions within Multi-User Dungeons (MUDs) through the advanced natural language processing capabilities of OpenAI's GPT-4. This state-of-the-art AI model empowers AutoMUD to seamlessly convert intuitive player commands into precise, game-ready actions, making the complex and richly detailed worlds of MUDs more accessible to both newcomers and seasoned players alike. By leveraging GPT-4, AutoMUD not only simplifies the command input process but also enhances the gaming experience with adaptive learning and personalized interactions, setting a new standard for AI-assisted gaming by merging the depth of MUDs with the simplicity and flexibility of natural language.
 
 
 Features
