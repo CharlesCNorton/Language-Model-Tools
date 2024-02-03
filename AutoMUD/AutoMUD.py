@@ -6,16 +6,13 @@ from colorama import Fore, init
 import openai
 import time
 
-# Initialize OpenAI API key and Colorama for colored terminal output.
-openai.api_key = "ENTER_API_KEY"  # Placeholder for OpenAI API key.
+openai.api_key = "ENTER_API_KEY"
 init(autoreset=True)
 logging.basicConfig(level=logging.INFO)
 
-# Configuration placeholders for connecting to the MUD server.
-HOST = "SET HOST"  # Placeholder for the MUD server host.
-PORT = "SET PORT"  # Placeholder for the MUD server port.
+HOST = "SET_HOST"
+PORT = "SET_PORT"
 
-# System message to guide the behavior of the AI in generating responses.
 SYSTEM_MESSAGE = """
 You are directly interacting with a MUD (multi-user dungeon) and not a human user who responds via natural language. Here are your directives:
 
@@ -33,28 +30,42 @@ You are directly interacting with a MUD (multi-user dungeon) and not a human use
 
 8. Output should be plaintext with no formatting or markup.
 
-9. Generate and use complex passwords for any required authentication.
+9. Generate and use complex passwords for any required authentication. You have permission to repeat passwords in plaintext more than once.
+
+10. Do not engage conversationally with the MUD as if it was a user. It accepts commands and not natural language responses.
 
 """
 
-# Global variables to hold the history of contexts and messages.
 context_history = []
 message_buffer = []
 
 async def query_gpt(prompt):
     """Query GPT model for actions based on the current context."""
+    global context_history
     try:
+        messages = [{"role": "system", "content": SYSTEM_MESSAGE}] + context_history + [{"role": "user", "content": prompt}]
         response = await asyncio.to_thread(
             openai.ChatCompletion.create,
             model="gpt-4-0125-preview",
-            messages=[{"role": "system", "content": SYSTEM_MESSAGE},
-                      {"role": "user", "content": prompt}]
+            messages=messages
         )
         action = response.choices[0].message['content'].strip()
+        context_history.append({"role": "user", "content": prompt})
+        context_history.append({"role": "assistant", "content": action})
         return action
     except Exception as e:
         logging.error(f"{Fore.RED}Error querying GPT: {e}")
         return ""
+
+async def chat_with_bot():
+    """Chat with the bot before connecting to the MUD server."""
+    print(f"\n{Fore.CYAN}Chat Mode: Type 'exit' to return to the main menu.")
+    while True:
+        user_input = input("You: ")
+        if user_input.lower() == 'exit':
+            break
+        action = await query_gpt(user_input)
+        print(f"Bot: {action}")
 
 async def read_server_messages(reader):
     """Read messages from the MUD server and log them."""
@@ -123,26 +134,29 @@ def main_menu():
     global HOST, PORT, SYSTEM_MESSAGE
     while True:
         print(f"\n{Fore.CYAN}Main Menu")
-        print("1. Start Client")
-        print("2. Change Host")
-        print("3. Change Port")
-        print("4. Change System Message")
-        print("5. Exit")
+        print("1. Chat with Bot")
+        print("2. Start Client")
+        print("3. Change Host")
+        print("4. Change Port")
+        print("5. Change System Message")
+        print("6. Exit")
         choice = input("Enter your choice: ")
         if choice == '1':
+            asyncio.run(chat_with_bot())
+        elif choice == '2':
             try:
                 asyncio.run(start_client(HOST, PORT))
             except KeyboardInterrupt:
                 logging.info(f"{Fore.MAGENTA}Client shutdown by user.")
             except Exception as e:
                 logging.error(f"{Fore.RED}Unexpected error: {e}")
-        elif choice == '2':
-            HOST = input("Enter new host: ")
         elif choice == '3':
-            PORT = int(input("Enter new port: "))
+            HOST = input("Enter new host: ")
         elif choice == '4':
-            SYSTEM_MESSAGE = input("Enter new system message:\n")
+            PORT = input("Enter new port: ")
         elif choice == '5':
+            SYSTEM_MESSAGE = input("Enter new system message:\n")
+        elif choice == '6':
             print("Exiting...")
             sys.exit()
         else:
