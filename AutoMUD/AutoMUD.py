@@ -2,12 +2,12 @@ import asyncio
 import logging
 import sys
 import telnetlib3
-from colorama import Fore, init
+from colorama import Fore, init, Style
 import openai
 import time
 
 openai.api_key = "ENTER_API_KEY"
-openai_model = "ENTER_MODEL_IN_MENU"
+openai_model = "ENTER_OPENAI_MODEL"
 init(autoreset=True)
 logging.basicConfig(level=logging.INFO)
 
@@ -23,17 +23,13 @@ You are directly interacting with a MUD (multi-user dungeon) and not a human use
 
 3. Respond with the exact number or keyword for menu choices. Ensure responses are precise.
 
-5. Provide alternatives or corrective actions in case of errors or invalid command suggestions.
+4. Utilize the history of commands and outcomes to refine suggestions for the game environment.
 
-6. Utilize the history of commands and outcomes to refine suggestions for the game environment.
+5. Use the 'say' command to conduct a reflective monologue if unsure about the next step.
 
-7. Use the 'say' command for internal monologue if unsure about the next step.
+6. Output should be plaintext with no formatting or markup.
 
-8. Output should be plaintext with no formatting or markup.
-
-9. Generate and use complex passwords for any required authentication. You have permission to repeat passwords in plaintext more than once.
-
-10. Do not engage conversationally with the MUD as if it was a user. It accepts commands and not natural language responses.
+7. Do not engage conversationally with the MUD as if it was a user. It accepts commands and not natural language responses.
 """
 
 context_history = []
@@ -155,19 +151,22 @@ def set_system_message():
     print("System message updated.")
 
 def main_menu():
-    global HOST, PORT
+    global HOST, PORT, openai_model
     while True:
         print(f"\n{Fore.CYAN}Main Menu")
-        print("1. Chat with Bot")
-        print("2. Start Client in Bot Mode")
-        print("3. Start Client in Direct Mode")
-        print("4. Change Host")
-        print("5. Change Port")
-        print("6. Set OpenAI API Key")
-        print("7. Set OpenAI Model")
-        print("8. Set System Message")
-        print("9. Exit")
-        choice = input("Enter your choice: ")
+        print(f"{Fore.CYAN}Chat and Client:")
+        print(f"  {Fore.YELLOW}1. Chat with Bot")
+        print(f"  {Fore.YELLOW}2. Start Client in Bot Mode")
+        print(f"  {Fore.YELLOW}3. Start Client in Direct Mode")
+        print(f"{Fore.CYAN}Configuration:")
+        print(f"  {Fore.YELLOW}4. Change Host (Current: {Fore.GREEN}{HOST})")
+        print(f"  {Fore.YELLOW}5. Change Port (Current: {Fore.GREEN}{PORT})")
+        print(f"  {Fore.YELLOW}6. Set OpenAI API Key")
+        print(f"  {Fore.YELLOW}7. Set OpenAI Model (Current: {Fore.GREEN}{openai_model})")
+        print(f"  {Fore.YELLOW}8. Set System Message")
+        print(f"{Fore.RED}9. Exit")
+
+        choice = input(f"{Fore.CYAN}Enter your choice: ")
         if choice == '1':
             asyncio.run(chat_with_bot())
         elif choice == '2':
@@ -175,19 +174,21 @@ def main_menu():
         elif choice == '3':
             asyncio.run(start_client(HOST, PORT, start_in_direct_mode=True))
         elif choice == '4':
-            HOST = input("Enter new host: ")
+            HOST = input(f"{Fore.CYAN}Enter new host: ")
+            print(f"{Fore.GREEN}Host updated to: {HOST}")
         elif choice == '5':
-            PORT = input("Enter new port: ")
+            PORT = input(f"{Fore.CYAN}Enter new port: ")
+            print(f"{Fore.GREEN}Port updated to: {PORT}")
         elif choice == '6':
-            openai.api_key = input("Enter OpenAI API Key: ")
+            openai.api_key = input(f"{Fore.CYAN}Enter OpenAI API Key: ")
+            print(f"{Fore.GREEN}API Key updated.")
         elif choice == '7':
-            global openai_model
-            openai_model = input("Enter OpenAI Model: ")
-            print(f"Model set to {openai_model}")
+            openai_model = input(f"{Fore.CYAN}Enter OpenAI Model: ")
+            print(f"{Fore.GREEN}Model set to {openai_model}")
         elif choice == '8':
             set_system_message()
         elif choice == '9':
-            print("Exiting...")
+            print(f"{Fore.GREEN}Exiting...")
             sys.exit()
         else:
             print(f"{Fore.RED}Invalid choice. Please try again.")
