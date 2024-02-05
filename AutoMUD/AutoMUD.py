@@ -5,9 +5,11 @@ import telnetlib3
 from colorama import Fore, init, Style
 import openai
 import time
+import logging
 
+logging.getLogger('telnetlib3.stream_writer').setLevel(logging.ERROR)
 openai.api_key = "ENTER_API_KEY"
-openai_model = "ENTER_OPENAI_MODEL"
+openai_model = "ENTER_MODEL"
 init(autoreset=True)
 logging.basicConfig(level=logging.INFO)
 
@@ -27,9 +29,10 @@ You are directly interacting with a MUD (multi-user dungeon) and not a human use
 
 5. Use the 'say' command to conduct a reflective monologue if unsure about the next step.
 
-6. Output should be plaintext with no formatting or markup.
+6. Output should be plaintext with no formatting or markup or newlines.
 
 7. Do not engage conversationally with the MUD as if it was a user. It accepts commands and not natural language responses.
+
 """
 
 context_history = []
