@@ -7,6 +7,7 @@ import openai
 import time
 
 openai.api_key = "ENTER_API_KEY"
+openai_model = "ENTER_MODEL_IN_MENU"
 init(autoreset=True)
 logging.basicConfig(level=logging.INFO)
 
@@ -40,12 +41,12 @@ message_buffer = []
 direct_input_mode = False
 
 async def query_gpt(prompt):
-    global context_history
+    global context_history, openai_model
     try:
         messages = [{"role": "system", "content": SYSTEM_MESSAGE}] + context_history + [{"role": "user", "content": prompt}]
         response = await asyncio.to_thread(
             openai.ChatCompletion.create,
-            model="gpt-4",
+            model=openai_model,
             messages=messages
         )
         action = response.choices[0].message['content'].strip()
@@ -146,6 +147,13 @@ async def start_client(host, port, start_in_direct_mode=False):
     ]
     await asyncio.gather(*tasks)
 
+def set_system_message():
+    global SYSTEM_MESSAGE
+    print("Current System Message:")
+    print(SYSTEM_MESSAGE)
+    SYSTEM_MESSAGE = input("Enter new system message: ")
+    print("System message updated.")
+
 def main_menu():
     global HOST, PORT
     while True:
@@ -155,8 +163,10 @@ def main_menu():
         print("3. Start Client in Direct Mode")
         print("4. Change Host")
         print("5. Change Port")
-        print("6. Change System Message")
-        print("7. Exit")
+        print("6. Set OpenAI API Key")
+        print("7. Set OpenAI Model")
+        print("8. Set System Message")
+        print("9. Exit")
         choice = input("Enter your choice: ")
         if choice == '1':
             asyncio.run(chat_with_bot())
@@ -169,8 +179,14 @@ def main_menu():
         elif choice == '5':
             PORT = input("Enter new port: ")
         elif choice == '6':
-            print("System message change functionality not implemented in this snippet.")
+            openai.api_key = input("Enter OpenAI API Key: ")
         elif choice == '7':
+            global openai_model
+            openai_model = input("Enter OpenAI Model: ")
+            print(f"Model set to {openai_model}")
+        elif choice == '8':
+            set_system_message()
+        elif choice == '9':
             print("Exiting...")
             sys.exit()
         else:
