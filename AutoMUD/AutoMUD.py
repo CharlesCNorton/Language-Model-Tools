@@ -10,8 +10,8 @@ openai.api_key = "ENTER_API_KEY"
 init(autoreset=True)
 logging.basicConfig(level=logging.INFO)
 
-HOST = "SET_HOST"
-PORT = "SET_PORT"
+HOST = "ENTER_HOST"
+PORT = "ENTER_PORT"
 
 SYSTEM_MESSAGE = """
 You are directly interacting with a MUD (multi-user dungeon) and not a human user who responds via natural language. Here are your directives:
@@ -33,20 +33,19 @@ You are directly interacting with a MUD (multi-user dungeon) and not a human use
 9. Generate and use complex passwords for any required authentication. You have permission to repeat passwords in plaintext more than once.
 
 10. Do not engage conversationally with the MUD as if it was a user. It accepts commands and not natural language responses.
-
 """
 
 context_history = []
 message_buffer = []
+direct_input_mode = False
 
 async def query_gpt(prompt):
-    """Query GPT model for actions based on the current context."""
     global context_history
     try:
         messages = [{"role": "system", "content": SYSTEM_MESSAGE}] + context_history + [{"role": "user", "content": prompt}]
         response = await asyncio.to_thread(
             openai.ChatCompletion.create,
-            model="gpt-4-0125-preview",
+            model="gpt-4",
             messages=messages
         )
         action = response.choices[0].message['content'].strip()
@@ -58,7 +57,6 @@ async def query_gpt(prompt):
         return ""
 
 async def chat_with_bot():
-    """Chat with the bot before connecting to the MUD server."""
     print(f"\n{Fore.CYAN}Chat Mode: Type 'exit' to return to the main menu.")
     while True:
         user_input = input("You: ")
@@ -68,7 +66,6 @@ async def chat_with_bot():
         print(f"Bot: {action}")
 
 async def read_server_messages(reader):
-    """Read messages from the MUD server and log them."""
     global message_buffer
     while True:
         message = await reader.read(32000)
@@ -78,7 +75,6 @@ async def read_server_messages(reader):
             message_buffer.append((time.time(), decoded_message))
 
 async def process_message_buffer(message_queue, buffer_delay=10):
-    """Process the buffer of messages from the server after a delay."""
     global message_buffer
     last_process_time = time.time()
     while True:
@@ -94,69 +90,87 @@ async def process_message_buffer(message_queue, buffer_delay=10):
         await asyncio.sleep(1)
 
 async def send_commands(writer, message_queue):
-    """Send commands to the MUD server based on AI's suggestions."""
+    global direct_input_mode
     while True:
+        if direct_input_mode:
+            await asyncio.sleep(1)
+            continue
         context_update = await message_queue.get()
-        action = await query_gpt(context_update)
-        if action:
-            try:
-                writer.write(action + "\r\n")
-                await writer.drain()
-                logging.info(f"{Fore.BLUE}Command sent: {action}")
-            except Exception as e:
-                logging.error(f"{Fore.RED}Error sending command: {e}")
+        if not direct_input_mode:
+            action = await query_gpt(context_update)
+            if action:
+                try:
+                    writer.write(action + "\r\n")
+                    await writer.drain()
+                    logging.info(f"{Fore.BLUE}Command sent: {action}")
+                except Exception as e:
+                    logging.error(f"{Fore.RED}Error sending command: {e}")
+        while not message_queue.empty():
+            message_queue.get_nowait()
+            message_queue.task_done()
 
-async def listen_for_user_input():
-    """Listen for user input and add it to the message buffer with priority."""
-    global message_buffer
+async def listen_for_user_input(writer, message_queue):
+    global message_buffer, direct_input_mode
     while True:
-        user_input = await asyncio.to_thread(input, "Type your message to the bot: ")
-        if user_input:
+        user_input = await asyncio.to_thread(input, "Type your message or '!togglemode' to switch modes: ")
+        if user_input == "!togglemode":
+            direct_input_mode = not direct_input_mode
+            mode = "Direct Input" if direct_input_mode else "Bot Driven"
+            print(f"Mode switched to: {mode}")
+            if not direct_input_mode:
+                message_queue.put_nowait("Consolidated or latest state update")
+            continue
+        if direct_input_mode:
+            try:
+                writer.write(user_input + "\r\n")
+                await writer.drain()
+                logging.info(f"{Fore.BLUE}Direct command sent: {user_input}")
+            except Exception as e:
+                logging.error(f"{Fore.RED}Error sending direct command: {e}")
+        else:
             priority_message = f"<PRIORITY DIRECTIVE> {user_input}"
             current_time = time.time()
             message_buffer.append((current_time, priority_message))
             logging.info(f"{Fore.YELLOW}Priority user message added to buffer: '{priority_message}'")
 
-async def start_client(host, port):
-    """Start the telnet client to connect to the MUD server."""
+async def start_client(host, port, start_in_direct_mode=False):
+    global direct_input_mode
+    direct_input_mode = start_in_direct_mode
     reader, writer = await telnetlib3.open_connection(host, port, connect_minwait=1.0)
     message_queue = asyncio.Queue()
     tasks = [
         read_server_messages(reader),
         process_message_buffer(message_queue),
         send_commands(writer, message_queue),
-        listen_for_user_input(),
+        listen_for_user_input(writer, message_queue),
     ]
     await asyncio.gather(*tasks)
 
 def main_menu():
-    """Display the main menu and handle user actions."""
-    global HOST, PORT, SYSTEM_MESSAGE
+    global HOST, PORT
     while True:
         print(f"\n{Fore.CYAN}Main Menu")
         print("1. Chat with Bot")
-        print("2. Start Client")
-        print("3. Change Host")
-        print("4. Change Port")
-        print("5. Change System Message")
-        print("6. Exit")
+        print("2. Start Client in Bot Mode")
+        print("3. Start Client in Direct Mode")
+        print("4. Change Host")
+        print("5. Change Port")
+        print("6. Change System Message")
+        print("7. Exit")
         choice = input("Enter your choice: ")
         if choice == '1':
             asyncio.run(chat_with_bot())
         elif choice == '2':
-            try:
-                asyncio.run(start_client(HOST, PORT))
-            except KeyboardInterrupt:
-                logging.info(f"{Fore.MAGENTA}Client shutdown by user.")
-            except Exception as e:
-                logging.error(f"{Fore.RED}Unexpected error: {e}")
+            asyncio.run(start_client(HOST, PORT, start_in_direct_mode=False))
         elif choice == '3':
-            HOST = input("Enter new host: ")
+            asyncio.run(start_client(HOST, PORT, start_in_direct_mode=True))
         elif choice == '4':
-            PORT = input("Enter new port: ")
+            HOST = input("Enter new host: ")
         elif choice == '5':
-            SYSTEM_MESSAGE = input("Enter new system message:\n")
+            PORT = input("Enter new port: ")
         elif choice == '6':
+            print("System message change functionality not implemented in this snippet.")
+        elif choice == '7':
             print("Exiting...")
             sys.exit()
         else:
