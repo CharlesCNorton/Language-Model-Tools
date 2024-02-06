@@ -5,7 +5,6 @@ import telnetlib3
 from colorama import Fore, init, Style
 import openai
 import time
-import logging
 
 logging.getLogger('telnetlib3.stream_writer').setLevel(logging.ERROR)
 openai.api_key = "ENTER_API_KEY"
@@ -16,24 +15,7 @@ logging.basicConfig(level=logging.INFO)
 HOST = "ENTER_HOST"
 PORT = "ENTER_PORT"
 
-SYSTEM_MESSAGE = """
-You are directly interacting with a MUD (multi-user dungeon) and not a human user who responds via natural language. Here are your directives:
-
-1. Always provide clear, actionable game commands suitable for direct input into the MUD. Avoid conversational language unless specifically requested.
-
-2. For tasks like entering passwords or making menu selections, generate direct and applicable responses.
-
-3. Respond with the exact number or keyword for menu choices. Ensure responses are precise.
-
-4. Utilize the history of commands and outcomes to refine suggestions for the game environment.
-
-5. Use the 'say' command to conduct a reflective monologue if unsure about the next step.
-
-6. Output should be plaintext with no formatting or markup or newlines.
-
-7. Do not engage conversationally with the MUD as if it was a user. It accepts commands and not natural language responses.
-
-"""
+SYSTEM_MESSAGE = """You are AutoMUD, a language model with the ability to be connected to telnet and to interact with the MUD (multi-user dungeon) through concise, actionable commands, directly applicable for input. You are also authorized to generate usernames and passwords. Avoid conversational language unless prompted, focusing on exact keywords or numbers for menu selections and password entries. Leverage command history to enhance game interaction strategies. If uncertain, employ the 'say' command for reflection. Ensure all output is in plaintext, devoid of formatting, markup, or newlines. Refrain from treating the MUD as a conversational partner; it recognizes commands, not natural language dialogue."""
 
 context_history = []
 message_buffer = []
@@ -63,7 +45,7 @@ async def chat_with_bot():
         if user_input.lower() == 'exit':
             break
         action = await query_gpt(user_input)
-        print(f"Bot: {action}")
+        print(f"AutoMUD: {action}")
 
 async def read_server_messages(reader):
     global message_buffer
@@ -110,9 +92,15 @@ async def send_commands(writer, message_queue):
             message_queue.task_done()
 
 async def listen_for_user_input(writer, message_queue):
-    global message_buffer, direct_input_mode
+    global message_buffer, direct_input_mode, context_history
     while True:
         user_input = await asyncio.to_thread(input, "Type your message or '!togglemode' to switch modes: ")
+
+        if user_input == "!clear":
+            context_history.clear()
+            print(f"{Fore.GREEN}Context history cleared.")
+            continue
+
         if user_input == "!togglemode":
             direct_input_mode = not direct_input_mode
             mode = "Direct Input" if direct_input_mode else "Bot Driven"
@@ -158,7 +146,7 @@ def main_menu():
     while True:
         print(f"\n{Fore.CYAN}Main Menu")
         print(f"{Fore.CYAN}Chat and Client:")
-        print(f"  {Fore.YELLOW}1. Chat with Bot")
+        print(f"  {Fore.YELLOW}1. Chat with AutoMUD")
         print(f"  {Fore.YELLOW}2. Start Client in Bot Mode")
         print(f"  {Fore.YELLOW}3. Start Client in Direct Mode")
         print(f"{Fore.CYAN}Configuration:")
