@@ -1,0 +1,3 @@
+colorama>=0.4.3
+# Replace 'latest_version' with the actual latest version of tiktoken you intend to use.
+tiktoken==latest_version
