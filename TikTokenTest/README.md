@@ -1,6 +1,5 @@
 Context Management and Token Counting Simulation
 
-Introduction
 This script demonstrates dynamic context management and token counting using TikToken with OpenAI models. It simulates user inputs and showcases how context can be efficiently managed over a series of iterations, with context trimming to maintain performance and resource utilization.
 
 Requirements
