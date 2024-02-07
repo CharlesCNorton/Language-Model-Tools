@@ -12,5 +12,4 @@ Usage
 2. Run the script in a Python environment: python TikTokenTest.py
 3. Follow the on-screen prompts to start the simulation.
 
-License
 This project is licensed under the MIT License. See the LICENSE file for details.
