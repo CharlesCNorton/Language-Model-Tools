@@ -6,6 +6,7 @@ from colorama import Fore, init, Style
 import openai
 import time
 
+in_chat_mode = False
 logging.getLogger('telnetlib3.stream_writer').setLevel(logging.ERROR)
 openai.api_key = "ENTER_API_KEY"
 openai_model = "ENTER_MODEL"
@@ -15,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 HOST = "ENTER_HOST"
 PORT = "ENTER_PORT"
 
-SYSTEM_MESSAGE = """You are AutoMUD, a language model with the ability to be connected to telnet and to interact with the MUD (multi-user dungeon) through concise, actionable commands, directly applicable for input. You are also authorized to generate usernames and passwords. Avoid conversational language unless prompted, focusing on exact keywords or numbers for menu selections and password entries. Leverage command history to enhance game interaction strategies. If uncertain, employ the 'say' command for reflection. Ensure all output is in plaintext, devoid of formatting, markup, or newlines. Refrain from treating the MUD as a conversational partner; it recognizes commands, not natural language dialogue."""
+SYSTEM_MESSAGE = "You are AutoMUD, a language model with the ability to be connected to telnet and to interact with the MUD (multi-user dungeon) through concise, actionable commands, directly applicable for input. You are also authorized to generate usernames and passwords. Avoid conversational language unless prompted, focusing on exact keywords or numbers for menu selections and password entries. Leverage command history to enhance game interaction strategies. If uncertain, employ the 'say' command for reflection. Ensure all output is in plaintext, devoid of formatting, markup, or newlines. Refrain from treating the MUD as a conversational partner; it recognizes commands, not natural language dialogue."
 
 context_history = []
 message_buffer = []
@@ -23,6 +24,14 @@ direct_input_mode = False
 
 async def query_gpt(prompt):
     global context_history, openai_model
+    max_tokens = 4096
+    trim_threshold = 0.9 * max_tokens
+
+    full_prompt = SYSTEM_MESSAGE + " ".join([msg['content'] for msg in context_history]) + prompt
+    if len(full_prompt) > trim_threshold:
+
+        context_history = context_history[-(len(context_history) // 2):]
+
     try:
         messages = [{"role": "system", "content": SYSTEM_MESSAGE}] + context_history + [{"role": "user", "content": prompt}]
         response = await asyncio.to_thread(
@@ -39,22 +48,51 @@ async def query_gpt(prompt):
         return ""
 
 async def chat_with_bot():
+    global in_chat_mode
     print(f"\n{Fore.CYAN}Chat Mode: Type 'exit' to return to the main menu.")
-    while True:
-        user_input = input("You: ")
-        if user_input.lower() == 'exit':
-            break
-        action = await query_gpt(user_input)
-        print(f"AutoMUD: {action}")
+    in_chat_mode = True
+    while in_chat_mode:
+        try:
+            user_input = await asyncio.to_thread(input, "You: ")
+            if user_input.lower() == 'exit':
+                in_chat_mode = False
+                break
+            action = await query_gpt(user_input)
+            print(f"AutoMUD: {action}")
+        except Exception as e:
+            logging.error(f"Error during chat mode: {e}")
 
 async def read_server_messages(reader):
     global message_buffer
-    while True:
-        message = await reader.read(32000)
-        if message:
-            decoded_message = message.decode('utf-8').strip() if isinstance(message, bytes) else message.strip()
-            logging.info(f"{Fore.GREEN}Server message: '{decoded_message}'")
-            message_buffer.append((time.time(), decoded_message))
+    try:
+        while True:
+            message = await reader.read(32000)
+            if message:
+                decoded_message = message.decode('utf-8').strip() if isinstance(message, bytes) else message.strip()
+                logging.info(f"{Fore.GREEN}Server message: '{decoded_message}'")
+                message_buffer.append((time.time(), decoded_message))
+            else:
+                logging.info("Connection closed by the server.")
+                break
+    except asyncio.IncompleteReadError:
+        logging.error(f"{Fore.RED}Connection lost unexpectedly.")
+    finally:
+        await ask_next_action()
+
+async def ask_next_action():
+    print("\nConnection to the server has been terminated.")
+    print("1. Chat with AutoMUD.")
+    print("2. Return to the main menu.")
+    user_choice = await asyncio.to_thread(input, "Enter your choice (1 or 2): ")
+
+    if user_choice == '1':
+        await chat_with_bot()
+    elif user_choice == '2':
+        print("Returning to the main menu...")
+        await asyncio.to_thread(main_menu)
+    else:
+        print("Invalid choice. Returning to the main menu...")
+        await asyncio.to_thread(main_menu)
 
 async def process_message_buffer(message_queue, buffer_delay=10):
     global message_buffer
@@ -124,15 +162,20 @@ async def listen_for_user_input(writer, message_queue):
 async def start_client(host, port, start_in_direct_mode=False):
     global direct_input_mode
     direct_input_mode = start_in_direct_mode
-    reader, writer = await telnetlib3.open_connection(host, port, connect_minwait=1.0)
-    message_queue = asyncio.Queue()
-    tasks = [
-        read_server_messages(reader),
-        process_message_buffer(message_queue),
-        send_commands(writer, message_queue),
-        listen_for_user_input(writer, message_queue),
-    ]
-    await asyncio.gather(*tasks)
+    try:
+        reader, writer = await telnetlib3.open_connection(host, port, connect_minwait=1.0)
+        message_queue = asyncio.Queue()
+        tasks = [
+            read_server_messages(reader),
+            process_message_buffer(message_queue),
+            send_commands(writer, message_queue),
+            listen_for_user_input(writer, message_queue),
+        ]
+        await asyncio.gather(*tasks)
+    except Exception as e:
+        logging.error(f"{Fore.RED}Error connecting to the server: {e}")
+        print("\nConnection to the server failed. Switching to chat mode with AutoMUD.")
+        await chat_with_bot()
 
 def set_system_message():
     global SYSTEM_MESSAGE
