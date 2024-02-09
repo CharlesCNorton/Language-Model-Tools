@@ -21,6 +21,7 @@ SYSTEM_MESSAGE = "You are AutoMUD, a language model with the ability to be conne
 context_history = []
 message_buffer = []
 direct_input_mode = False
+is_connected = False
 
 async def query_gpt(prompt):
     global context_history, openai_model
@@ -29,7 +30,6 @@ async def query_gpt(prompt):
 
     full_prompt = SYSTEM_MESSAGE + " ".join([msg['content'] for msg in context_history]) + prompt
     if len(full_prompt) > trim_threshold:
-
         context_history = context_history[-(len(context_history) // 2):]
 
     try:
@@ -48,22 +48,22 @@ async def query_gpt(prompt):
         return ""
 
 async def chat_with_bot():
-    global in_chat_mode
+    global in_chat_mode, direct_input_mode, context_history
     print(f"\n{Fore.CYAN}Chat Mode: Type 'exit' to return to the main menu.")
     in_chat_mode = True
+    direct_input_mode = False
     while in_chat_mode:
-        try:
-            user_input = await asyncio.to_thread(input, "You: ")
-            if user_input.lower() == 'exit':
-                in_chat_mode = False
-                break
-            action = await query_gpt(user_input)
-            print(f"AutoMUD: {action}")
-        except Exception as e:
-            logging.error(f"Error during chat mode: {e}")
+        user_input = input("You: ")
+        if user_input.lower() == 'exit':
+            in_chat_mode = False
+            break
+        action = await query_gpt(user_input)
+        print(f"AutoMUD: {action}")
+    direct_input_mode = False
+    await main_menu()
 
 async def read_server_messages(reader):
-    global message_buffer
+    global message_buffer, is_connected
     try:
         while True:
             message = await reader.read(32000)
@@ -73,31 +73,18 @@ async def read_server_messages(reader):
                 message_buffer.append((time.time(), decoded_message))
             else:
                 logging.info("Connection closed by the server.")
+                is_connected = False
                 break
     except asyncio.IncompleteReadError:
         logging.error(f"{Fore.RED}Connection lost unexpectedly.")
+        is_connected = False
     finally:
-        await ask_next_action()
-
-async def ask_next_action():
-    print("\nConnection to the server has been terminated.")
-    print("1. Chat with AutoMUD.")
-    print("2. Return to the main menu.")
-    user_choice = await asyncio.to_thread(input, "Enter your choice (1 or 2): ")
-
-    if user_choice == '1':
-        await chat_with_bot()
-    elif user_choice == '2':
-        print("Returning to the main menu...")
-        await asyncio.to_thread(main_menu)
-    else:
-        print("Invalid choice. Returning to the main menu...")
-        await asyncio.to_thread(main_menu)
+        await main_menu()
 
 async def process_message_buffer(message_queue, buffer_delay=10):
-    global message_buffer
+    global message_buffer, is_connected
     last_process_time = time.time()
-    while True:
+    while is_connected:
         current_time = time.time()
         time_since_last_process = current_time - last_process_time
         if time_since_last_process >= buffer_delay:
@@ -110,8 +97,8 @@ async def process_message_buffer(message_queue, buffer_delay=10):
         await asyncio.sleep(1)
 
 async def send_commands(writer, message_queue):
-    global direct_input_mode
-    while True:
+    global direct_input_mode, is_connected
+    while is_connected:
         if direct_input_mode:
             await asyncio.sleep(1)
             continue
@@ -130,8 +117,10 @@ async def send_commands(writer, message_queue):
             message_queue.task_done()
 
 async def listen_for_user_input(writer, message_queue):
-    global message_buffer, direct_input_mode, context_history
+    global message_buffer, direct_input_mode, context_history, is_connected
     while True:
+        if not is_connected:
+            break
         user_input = await asyncio.to_thread(input, "Type your message or '!togglemode' to switch modes: ")
 
         if user_input == "!clear":
@@ -146,24 +135,26 @@ async def listen_for_user_input(writer, message_queue):
             if not direct_input_mode:
                 message_queue.put_nowait("Consolidated or latest state update")
             continue
-        if direct_input_mode:
+
+        if direct_input_mode and user_input:
             try:
                 writer.write(user_input + "\r\n")
                 await writer.drain()
                 logging.info(f"{Fore.BLUE}Direct command sent: {user_input}")
             except Exception as e:
                 logging.error(f"{Fore.RED}Error sending direct command: {e}")
-        else:
+        elif not direct_input_mode and user_input:
             priority_message = f"<PRIORITY DIRECTIVE> {user_input}"
             current_time = time.time()
             message_buffer.append((current_time, priority_message))
             logging.info(f"{Fore.YELLOW}Priority user message added to buffer: '{priority_message}'")
 
 async def start_client(host, port, start_in_direct_mode=False):
-    global direct_input_mode
+    global direct_input_mode, is_connected
     direct_input_mode = start_in_direct_mode
     try:
         reader, writer = await telnetlib3.open_connection(host, port, connect_minwait=1.0)
+        is_connected = True
         message_queue = asyncio.Queue()
         tasks = [
             read_server_messages(reader),
@@ -174,6 +165,7 @@ async def start_client(host, port, start_in_direct_mode=False):
         await asyncio.gather(*tasks)
     except Exception as e:
         logging.error(f"{Fore.RED}Error connecting to the server: {e}")
+        is_connected = False
         print("\nConnection to the server failed. Switching to chat mode with AutoMUD.")
         await chat_with_bot()
 
@@ -184,8 +176,10 @@ def set_system_message():
     SYSTEM_MESSAGE = input("Enter new system message: ")
     print("System message updated.")
 
-def main_menu():
-    global HOST, PORT, openai_model
+async def main_menu():
+    global HOST, PORT, openai_model, direct_input_mode, is_connected
+    direct_input_mode = False
+    is_connected = False
     while True:
         print(f"\n{Fore.CYAN}Main Menu")
         print(f"{Fore.CYAN}Chat and Client:")
@@ -202,11 +196,11 @@ def main_menu():
 
         choice = input(f"{Fore.CYAN}Enter your choice: ")
         if choice == '1':
-            asyncio.run(chat_with_bot())
+            await chat_with_bot()
         elif choice == '2':
-            asyncio.run(start_client(HOST, PORT, start_in_direct_mode=False))
+            await start_client(HOST, PORT, start_in_direct_mode=False)
         elif choice == '3':
-            asyncio.run(start_client(HOST, PORT, start_in_direct_mode=True))
+            await start_client(HOST, PORT, start_in_direct_mode=True)
         elif choice == '4':
             HOST = input(f"{Fore.CYAN}Enter new host: ")
             print(f"{Fore.GREEN}Host updated to: {HOST}")
@@ -228,4 +222,4 @@ def main_menu():
             print(f"{Fore.RED}Invalid choice. Please try again.")
 
 if __name__ == "__main__":
-    main_menu()
+    asyncio.run(main_menu())
