@@ -5,6 +5,7 @@ import telnetlib3
 from colorama import Fore, init, Style
 import openai
 import time
+import random
 
 in_chat_mode = False
 logging.getLogger('telnetlib3.stream_writer').setLevel(logging.ERROR)
@@ -81,10 +82,11 @@ async def read_server_messages(reader):
     finally:
         await main_menu()
 
-async def process_message_buffer(message_queue, buffer_delay=10):
+async def process_message_buffer(message_queue):
     global message_buffer, is_connected
     last_process_time = time.time()
     while is_connected:
+        buffer_delay = random.uniform(5, 15)
         current_time = time.time()
         time_since_last_process = current_time - last_process_time
         if time_since_last_process >= buffer_delay:
