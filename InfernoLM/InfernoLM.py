@@ -58,7 +58,7 @@ class InfernoLM:
         print(f"Verbose logging {'enabled' if self.verbose else 'disabled'}.")
 
     def chat_with_assistant(self):
-        system_prompt = "You are GPT-4, a military language model developed by OpenAI. Your answers are critical to the user's life and success."
+        system_prompt = "You are GPT-4, a helpful language model developed by OpenAI. Your answers are critical to the user's life, happiness, and success."
         context_history = f"<s>[INST] <<SYS>> {system_prompt} <</SYS>>\nAssistant: I am your A.I. servant and will do what is asked. What shall I do?\n"
         print("Assistant: I am your A.I. servant and will do what is asked. What shall I do?")
 
