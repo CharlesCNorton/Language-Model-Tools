@@ -6,16 +6,29 @@ from colorama import init, Fore
 init(autoreset=True)
 
 async def context_management_simulation():
-    # Greet users and explain the purpose of the simulation.
-    print(Fore.CYAN + "Welcome to the Context Management and Token Counting Simulation!")
-    print(Fore.CYAN + "This simulation showcases dynamic context management using TikToken with OpenAI models.\n")
+    while True:
+        # Show the main menu.
+        print(Fore.LIGHTGREEN_EX + "Context Management and Token Counting Simulation Menu")
+        print(Fore.LIGHTGREEN_EX + "1. Start Simulation")
+        print(Fore.LIGHTGREEN_EX + "2. Help / Instructions")
+        print(Fore.LIGHTGREEN_EX + "3. Exit\n")
 
-    # Prompt user to start the simulation or exit.
-    action = input(Fore.LIGHTBLUE_EX + "Press Enter to start or type 'exit' to quit: ").lower()
-    if action == 'exit':
-        # User chose to exit the simulation.
-        print(Fore.CYAN + "Exiting simulation.")
-        return
+        choice = input(Fore.YELLOW + "Enter your choice (1-3): ").strip()
+
+        if choice == "1":
+            await start_simulation()
+        elif choice == "2":
+            display_help()
+        elif choice == "3":
+            print(Fore.CYAN + "Exiting simulation.")
+            break
+        else:
+            print(Fore.RED + "Invalid choice, please enter 1, 2, or 3.\n")
+
+async def start_simulation():
+    # Greet users and explain the purpose of the simulation.
+    print(Fore.CYAN + "\nWelcome to the Context Management and Token Counting Simulation!")
+    print(Fore.CYAN + "This simulation showcases dynamic context management using TikToken with OpenAI models.\n")
 
     # Define a list of sentences to simulate user inputs.
     sentences = [
@@ -60,7 +73,14 @@ async def context_management_simulation():
     # Display final statistics and conclude the simulation with a unique color.
     print(Fore.LIGHTWHITE_EX + f"\nFinal context size: {len(context_history)}, Total tokens: {final_tokens}")
     print(Fore.LIGHTWHITE_EX + f"Simulation complete. Initial tokens: {initial_tokens}, Final tokens: {final_tokens}, Total iterations: {i+1}, Context trim events: {trim_events}")
-    print(Fore.LIGHTWHITE_EX + "This showcases the effectiveness of dynamic context management and token counting with TikToken.")
+    print(Fore.LIGHTWHITE_EX + "This showcases the effectiveness of dynamic context management and token counting with TikToken.\n")
+
+def display_help():
+    # Display help/instructions for the simulation.
+    print(Fore.LIGHTMAGENTA_EX + "\nSimulation Help / Instructions")
+    print(Fore.LIGHTMAGENTA_EX + "This simulation demonstrates how TikToken can be used for dynamic context management and token counting with OpenAI models.")
+    print(Fore.LIGHTMAGENTA_EX + "You will see how the context is managed and trimmed across numerous iterations to keep within a token limit.")
+    print(Fore.LIGHTMAGENTA_EX + "Use the 'Start Simulation' option to begin and observe the process in action.\n")
 
 # Ensure the script runs in an asyncio event loop if executed as the main program.
 if __name__ == "__main__":
