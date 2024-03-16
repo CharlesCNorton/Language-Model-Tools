@@ -5,9 +5,8 @@ import sys
 init(autoreset=True)
 
 API_KEY = ""
-MODEL = "claude-3-opus-20240229"  # Default model
+MODEL = "claude-3-opus-20240229"
 MAX_TOKENS = 1024
-
 
 def display_menu():
     print(Fore.CYAN + "Welcome to ClaudeChat, the Anthropic Chatbot Interface!")
@@ -19,15 +18,13 @@ def display_menu():
     choice = input(Fore.GREEN + "Enter your choice (1-5): ")
     return choice
 
-
 def enter_api_key():
     global API_KEY
-    API_KEY = input(Fore.MAGENTA + "Enter your Anthropic API Key: ")
+    API_KEY = input(Fore.MAGENTA + "Enter your Anthropic API Key: ").strip()
     if API_KEY:
         print(Fore.GREEN + "API Key set successfully!")
     else:
         print(Fore.RED + "No API Key was entered. Please try again.")
-
 
 def enter_chat():
     global API_KEY, MODEL, MAX_TOKENS
@@ -45,7 +42,7 @@ def enter_chat():
     chat_history = []
 
     while True:
-        user_input = input(Fore.YELLOW + "You: ")
+        user_input = input(Fore.YELLOW + "You: ").strip()
         if user_input.lower() == 'quit':
             break
 
@@ -62,9 +59,10 @@ def enter_chat():
                 print(Fore.GREEN + "Chatbot: " + response.content[0].text)
             else:
                 print(Fore.RED + "The chatbot did not provide a response.")
+        except anthropic.AnthropicError as ae:
+            print(Fore.RED + "Failed to send message or process response due to Anthropic API error: " + str(ae))
         except Exception as e:
             print(Fore.RED + "Failed to send message or process response: " + str(e))
-
 
 def change_model():
     global MODEL
@@ -72,29 +70,30 @@ def change_model():
     print("1. Claude 3 Haiku")
     print("2. Claude 3 Sonnet")
     print("3. Claude 3 Opus")
-    model_choice = input("Enter your choice (1-3): ")
+    model_choice = input("Enter your choice (1-3): ").strip()
 
-    if model_choice == "1":
-        MODEL = "claude-3-haiku-20240229"
-    elif model_choice == "2":
-        MODEL = "claude-3-sonnet-20240229"
-    elif model_choice == "3":
-        MODEL = "claude-3-opus-20240229"
+    model_map = {
+        "1": "claude-3-haiku-20240229",
+        "2": "claude-3-sonnet-20240229",
+        "3": "claude-3-opus-20240229"
+    }
+
+    if model_choice in model_map:
+        MODEL = model_map[model_choice]
+        print(Fore.GREEN + f"Model changed to {MODEL}.")
     else:
         print(Fore.RED + "Invalid choice. Model not changed.")
-        return
-
-    print(Fore.GREEN + f"Model changed to {MODEL}.")
-
 
 def modify_max_tokens():
     global MAX_TOKENS
     try:
-        MAX_TOKENS = int(input(Fore.CYAN + "Enter new max tokens (integer, current: " + str(MAX_TOKENS) + "): "))
+        new_max_tokens = int(input(Fore.CYAN + "Enter new max tokens (integer, current: " + str(MAX_TOKENS) + "): ").strip())
+        if new_max_tokens <= 0:
+            raise ValueError("Max tokens must be a positive integer.")
+        MAX_TOKENS = new_max_tokens
         print(Fore.GREEN + "Max tokens updated successfully.")
-    except ValueError:
-        print(Fore.RED + "Invalid input for max tokens. Please enter an integer.")
-
+    except ValueError as ve:
+        print(Fore.RED + "Invalid input for max tokens: " + str(ve))
 
 def main():
     while True:
@@ -112,7 +111,6 @@ def main():
             break
         else:
             print(Fore.RED + "Invalid choice. Please enter a number between 1 and 5.")
-
 
 if __name__ == "__main__":
     try:
