@@ -54,7 +54,7 @@ def merge_models(args, trust_remote_code):
     model = PeftModel.from_pretrained(base_model, peft_model_path, **device_arg)
     print("Running merge_and_unload")
     model = model.merge_and_unload()
-    tokenizer = AutoTokenizer.from_pretrained(base_model_name_or_path)
+    tokenizer = AutoTokenizer.from_pretrained(base_model_name_or_path, trust_remote_code=trust_remote_code)
     model.save_pretrained(output_dir)
     tokenizer.save_pretrained(output_dir)
     print(f"Model saved to {output_dir}")
