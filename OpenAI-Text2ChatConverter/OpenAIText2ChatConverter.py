@@ -15,21 +15,21 @@ stop_event = threading.Event()
 def get_selected_model():
     return model_var.get()
 
-async def async_process_text(session, text_chunk, custom_system_message, model_name, mode):
-    system_messages = {
-        "Q&A": "You are an expert Q&A generator who converts text chunks into high-quality Q&A pairs in the format Q: and A:.",
+async def async_process_text(session, text_chunk, custom_system_message, custom_user_prompt, model_name, mode):
+    # Default system messages and prompts if none provided by the user
+    default_system_messages = {
+        "Q&A": "You are an expert Q&A generator tasked with transforming text chunks into high-quality Q&A pairs formatted as Q: and A:. Your responses must employ a diction steeped in Viking-era language, marked by a ferocious and bold warrior spirit. Aim for a dramatic and extreme, yet somewhat incoherent style that mirrors the turbulent sagas of ancient Norse battles.",
         "Summary": "You are an expert summarizer who provides concise and informative summaries of the provided text.",
         "Transcription": "You are an expert transcriber who transcribes the provided text with spelling and formatting corrections."
     }
-
-    user_prompts = {
-        "Q&A": f"Develop a high quality Q&A pair from the given text chunk:\n{text_chunk}",
+    default_user_prompts = {
+        "Q&A": f"Develop a high-quality Q&A pair from the provided text chunk. Employ extreme diction and semi-coherent language authentic to the Viking era, styled to be bold and aggressive like a Viking warrior, yet dramatic and semi-coherent, mimicking the narrative style of a saga:\n{text_chunk}",
         "Summary": f"Summarize the following text:\n{text_chunk}",
         "Transcription": f"Transcribe the following text with spelling corrections and modern longform paragraph formatting, but without annotating and without inserting non-text related strings:\n{text_chunk}"
     }
 
-    system_message = custom_system_message if custom_system_message else system_messages.get(mode, "")
-    user_prompt = user_prompts.get(mode, "")
+    system_message = custom_system_message if custom_system_message else default_system_messages[mode]
+    user_prompt = custom_user_prompt if custom_user_prompt else default_user_prompts[mode]
 
     try:
         response = await session.post(
@@ -40,7 +40,7 @@ async def async_process_text(session, text_chunk, custom_system_message, model_n
                     {"role": "system", "content": system_message},
                     {"role": "user", "content": user_prompt}
                 ],
-                "temperature": 0.8,
+                "temperature": 0.9,
                 "max_tokens": 4096
             },
             headers={
@@ -93,7 +93,7 @@ def format_content_for_mode(content, mode):
     else:
         return [{"role": "user", "content": content}]
 
-async def convert_to_chatml(input_file_path, output_file_path, custom_system_message, progress_var, root, model_name, mode, max_chunk_size):
+async def convert_to_chatml(input_file_path, output_file_path, custom_system_message, custom_user_prompt, progress_var, root, model_name, mode, max_chunk_size):
     logging.info("Starting conversion to ChatML format.")
 
     try:
@@ -108,7 +108,7 @@ async def convert_to_chatml(input_file_path, output_file_path, custom_system_mes
                 raise ValueError("Max chunk size must be a positive integer.")
         except ValueError as e:
             logging.error(f"Invalid max_chunk_size: {e}")
-            messagebox.showerror("Error", f"Invalid max chunk size: {e}")
+            messagebox.showerror("Error", f"Invalid max_chunk size: {e}")
             return
 
         formatted_content = []
@@ -125,7 +125,7 @@ async def convert_to_chatml(input_file_path, output_file_path, custom_system_mes
                     break
 
                 logging.info(f"Processing chunk {chunk_index + 1}/{len(chunks)}.")
-                processed_content = await async_process_text(session, chunk, custom_system_message, model_name, mode)
+                processed_content = await async_process_text(session, chunk, custom_system_message, custom_user_prompt, model_name, mode)
 
                 if processed_content:
                     formatted_chunk = format_content_for_mode(processed_content, mode)
@@ -154,9 +154,9 @@ async def convert_to_chatml(input_file_path, output_file_path, custom_system_mes
         logging.exception("An unexpected error occurred during the conversion process.")
         messagebox.showerror("Error", "An error occurred during the conversion process. Check logs for details.")
 
-def start_conversion_thread(input_file_path, output_file_path, custom_system_message, progress_var, root, model_name, mode, max_chunk_size):
+def start_conversion_thread(input_file_path, output_file_path, custom_system_message, custom_user_prompt, progress_var, root, model_name, mode, max_chunk_size):
     stop_event.clear()
-    asyncio.run(convert_to_chatml(input_file_path, output_file_path, custom_system_message, progress_var, root, model_name, mode, max_chunk_size))
+    asyncio.run(convert_to_chatml(input_file_path, output_file_path, custom_system_message, custom_user_prompt, progress_var, root, model_name, mode, max_chunk_size))
 
 def main():
     root = tk.Tk()
@@ -166,6 +166,10 @@ def main():
     mode_var = tk.StringVar(value="Q&A")
     max_chunk_size_var = tk.IntVar(value=500)
     api_key_var = tk.StringVar()
+
+    # Adding fields for custom system messages and prompts
+    custom_system_message_var = tk.StringVar()
+    custom_user_prompt_var = tk.StringVar()
 
     def select_input_file():
         file_path = filedialog.askopenfilename()
@@ -180,7 +184,8 @@ def main():
     def start_conversion():
         input_file_path = input_entry.get()
         output_file_path = output_entry.get()
-        custom_system_message = system_message_entry.get()
+        custom_system_message = custom_system_message_var.get()
+        custom_user_prompt = custom_user_prompt_var.get()
         selected_model = model_var.get()
         selected_mode = mode_var.get()
         max_chunk_size = max_chunk_size_var.get()
@@ -193,7 +198,7 @@ def main():
         openai.api_key = api_key
 
         if input_file_path and output_file_path:
-            threading.Thread(target=start_conversion_thread, args=(input_file_path, output_file_path, custom_system_message, progress_var, root, selected_model, selected_mode, max_chunk_size), daemon=True).start()
+            threading.Thread(target=start_conversion_thread, args=(input_file_path, output_file_path, custom_system_message, custom_user_prompt, progress_var, root, selected_model, selected_mode, max_chunk_size), daemon=True).start()
         else:
             messagebox.showwarning("Warning", "Please select both input and output file paths.")
 
@@ -221,33 +226,37 @@ def main():
 
     system_message_label = tk.Label(root, text="Custom System Message (Optional):")
     system_message_label.grid(row=3, column=0, sticky="e")
-    system_message_entry = tk.Entry(root, width=50)
+    system_message_entry = tk.Entry(root, textvariable=custom_system_message_var, width=50)
     system_message_entry.grid(row=3, column=1)
-    system_message_entry.insert(0, "You are an expert assistant who provides detailed, accurate, and clear answers.")
+
+    user_prompt_label = tk.Label(root, text="Custom User Prompt (Optional):")
+    user_prompt_label.grid(row=4, column=0, sticky="e")
+    user_prompt_entry = tk.Entry(root, textvariable=custom_user_prompt_var, width=50)
+    user_prompt_entry.grid(row=4, column=1)
 
     model_label = tk.Label(root, text="Select Model:")
-    model_label.grid(row=4, column=0, sticky="e")
-    model_dropdown = ttk.Combobox(root, textvariable=model_var, values=["gpt-3.5-turbo", "gpt-4"])
-    model_dropdown.grid(row=4, column=1)
+    model_label.grid(row=5, column=0, sticky="e")
+    model_dropdown = ttk.Combobox(root, textvariable=model_var, values=["gpt-3.5-turbo", "gpt-4-turbo-2024-04-09"])
+    model_dropdown.grid(row=5, column=1)
 
     mode_label = tk.Label(root, text="Select Processing Mode:")
-    mode_label.grid(row=5, column=0, sticky="e")
+    mode_label.grid(row=6, column=0, sticky="e")
     mode_dropdown = ttk.Combobox(root, textvariable=mode_var, values=["Q&A", "Summary", "Transcription"])
-    mode_dropdown.grid(row=5, column=1)
+    mode_dropdown.grid(row=6, column=1)
 
     max_chunk_size_label = tk.Label(root, text="Max Chunk Size:")
-    max_chunk_size_label.grid(row=6, column=0, sticky="e")
+    max_chunk_size_label.grid(row=7, column=0, sticky="e")
     max_chunk_size_entry = tk.Entry(root, textvariable=max_chunk_size_var, width=10)
-    max_chunk_size_entry.grid(row=6, column=1)
+    max_chunk_size_entry.grid(row=7, column=1)
 
     convert_button = tk.Button(root, text="Convert to ChatML", command=start_conversion)
-    convert_button.grid(row=7, column=0, columnspan=3)
+    convert_button.grid(row=8, column=0, columnspan=3)
 
     progress_bar = ttk.Progressbar(root, variable=progress_var, maximum=100)
-    progress_bar.grid(row=8, column=0, columnspan=3, sticky="ew")
+    progress_bar.grid(row=9, column=0, columnspan=3, sticky="ew")
 
     stop_button = tk.Button(root, text="STOP", command=stop_conversion)
-    stop_button.grid(row=9, column=0, columnspan=3)
+    stop_button.grid(row=10, column=0, columnspan=3)
 
     root.mainloop()
 
