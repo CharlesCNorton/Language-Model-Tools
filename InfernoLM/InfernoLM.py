@@ -100,10 +100,10 @@ class InfernoLM:
         if not self.model_loaded:
             print(Fore.RED + "Model not loaded. Please load a model first.")
             return
-        system_prompt = "You are a helpful A.I. assistant."
-        context_history = f"<s>[INST] <<SYS>> {system_prompt} <</SYS>>\nAssistant: I am your A.I. servant. How may I help you?\n"
-        print(Fore.CYAN + "Assistant: How may I help you?")
-        eos_token = '</s>'
+        system_prompt = "You are a helpful A.I. assistant!"
+        context_history = f"{system_prompt}\nAssistant: Hello! I am your A.I. assistant. How may I help you?\n"
+        print(Fore.CYAN + "Assistant: Hello! How may I help you?")
+        eos_token = ''
         if use_audio:
             self.setup_audio_input(context_history, eos_token)
         else:
@@ -149,7 +149,7 @@ class InfernoLM:
         inputs = self.tokenizer.encode_plus(context_history, return_tensors='pt', padding=True, truncation=True, max_length=4096)
         inputs = inputs.to(self.device)
         eos_token_id = self.tokenizer.convert_tokens_to_ids(eos_token)
-        generation_config = {'input_ids': inputs['input_ids'], 'max_length': len(inputs['input_ids'][0]) + 500, 'temperature': 0.7,
+        generation_config = {'input_ids': inputs['input_ids'], 'max_length': len(inputs['input_ids'][0]) + 500, 'temperature': 0.6,
                              'top_p': 0.9, 'top_k': 50, 'eos_token_id': eos_token_id, 'pad_token_id': self.tokenizer.eos_token_id,
                              'do_sample': True, 'num_beams': 10, 'early_stopping': True}
         try:
