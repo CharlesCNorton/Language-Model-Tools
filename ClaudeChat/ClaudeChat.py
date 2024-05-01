@@ -1,52 +1,23 @@
 from colorama import Fore, init
 import anthropic
 import sys
-import json
 
 init(autoreset=True)
 
 class ConfigurationManager:
-    def __init__(self, config_file="config.json"):
-        self.config_file = config_file
-        self.load_config()
-
-    def load_config(self):
-        try:
-            with open(self.config_file, "r") as file:
-                config = json.load(file)
-                self.api_key = config.get("API_KEY", "")
-                self.model = config.get("MODEL", "claude-3-opus-20240229")
-                self.max_tokens = config.get("MAX_TOKENS", 1024)
-        except FileNotFoundError:
-            self.api_key = ""
-            self.model = "claude-3-opus-20240229"
-            self.max_tokens = 1024
-            self.save_config()  # Create a default config file if it doesn't exist.
-        except json.JSONDecodeError:
-            print(Fore.RED + "Error reading configuration. Check your config file format.")
-            sys.exit(1)
-
-    def save_config(self):
-        config = {
-            "API_KEY": self.api_key,
-            "MODEL": self.model,
-            "MAX_TOKENS": self.max_tokens
-        }
-        with open(self.config_file, "w") as file:
-            json.dump(config, file)
+    def __init__(self):
+        self.api_key = ""
+        self.model = "claude-3-opus-20240229"
+        self.max_tokens = 1024
 
     def update_api_key(self, api_key):
         self.api_key = api_key
-        self.save_config()
 
     def update_model(self, model):
         self.model = model
-        self.save_config()
 
     def update_max_tokens(self, max_tokens):
         self.max_tokens = max_tokens
-        self.save_config()
-
 
 class ChatClient:
     def __init__(self, config_manager):
