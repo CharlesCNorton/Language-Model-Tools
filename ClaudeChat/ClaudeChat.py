@@ -28,7 +28,7 @@ class ChatClient:
             print(Fore.RED + "Error: Please enter your API key first.")
             return
 
-        print(Fore.GREEN + f"Entering chat mode with model {self.config_manager.model}. Type 'quit' to exit.")
+        print(Fore.GREEN + f"Entering chat mode with model {self.config_manager.model}. Type 'quit' to exit or '!clear' to clear the chat history.")
         try:
             anthropic_client = anthropic.Anthropic(api_key=self.config_manager.api_key)
         except Exception as e:
@@ -42,7 +42,13 @@ class ChatClient:
                 user_input = input(Fore.YELLOW + "You: ").strip()
                 if user_input.lower() == 'quit':
                     break
+                elif user_input.lower() == '!clear':
+                    chat_history = []  # Clearing the chat history
+                    print(Fore.GREEN + "Chat history cleared.")
+                    continue
+
                 chat_history.append({"role": "user", "content": user_input})
+
                 response = anthropic_client.messages.create(
                     model=self.config_manager.model,
                     max_tokens=self.config_manager.max_tokens,
@@ -63,8 +69,8 @@ class MenuSystem:
 
     def display_menu(self):
         print(Fore.CYAN + "Welcome to ClaudeChat, the Anthropic Chatbot Interface!")
-        print(Fore.YELLOW + "1. Enter API Key")
-        print("2. Enter chat")
+        print(Fore.YELLOW + "1. Enter chat")
+        print("2. Enter API Key")
         print("3. Change Model")
         print("4. Modify max tokens")
         print("5. Exit")
@@ -95,14 +101,14 @@ class MenuSystem:
             while True:
                 choice = self.display_menu()
                 if choice == "1":
+                    self.chat_client.enter_chat()
+                elif choice == "2":
                     new_api_key = input(Fore.MAGENTA + "Enter your Anthropic API Key: ").strip()
                     self.config_manager.update_api_key(new_api_key)
                     if new_api_key:
                         print(Fore.GREEN + "API Key set successfully!")
                     else:
                         print(Fore.RED + "No API Key was entered. Please try again.")
-                elif choice == "2":
-                    self.chat_client.enter_chat()
                 elif choice == "3":
                     self.change_model()
                 elif choice == "4":
