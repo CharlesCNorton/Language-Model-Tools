@@ -118,8 +118,8 @@ def auto_train(train_dataset, val_dataset, num_iterations):
             params = {
                 'epochs': random.randint(2, 5),
                 'batch_size': random.choice([16, 32]),
-                'warmup_steps': random.choice([0, 100]),
-                'weight_decay': random.choice([0.01, 0.1])
+                'warmup_steps': random.choice([0, 100, 500]),
+                'weight_decay': random.choice([0.01, 0.05, 0.1])
             }
             print(f"{Fore.BLUE}Training with hyperparameters: {params}{Style.RESET_ALL}")
             model, trainer, eval_result = train_model(train_dataset, val_dataset, **params)
