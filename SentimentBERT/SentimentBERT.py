@@ -21,7 +21,9 @@ def safe_load_dataset(dataset_name):
         return dataset
     except Exception as e:
         print(f"{Fore.RED}Failed to load dataset {dataset_name}. Error: {e}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Please check if the dataset name '{dataset_name}' is correct and available. You may also want to check your network connection if it's an online dataset.{Style.RESET_ALL}")
         return None
+
 
 def prepare_data(dataset):
     try:
@@ -32,7 +34,9 @@ def prepare_data(dataset):
         return train_data, test_data
     except Exception as e:
         print(f"{Fore.RED}Error during data preparation: {e}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Check if the dataset is properly formatted. Ensure columns 'train' and 'test' exist and contain the necessary data.{Style.RESET_ALL}")
         return None, None
+
 
 class SentimentDataset(Dataset):
     def __init__(self, texts, labels, tokenizer):
@@ -44,6 +48,7 @@ class SentimentDataset(Dataset):
             print(f"{Fore.GREEN}Data tokenization and encoding complete.{Style.RESET_ALL}")
         except Exception as e:
             print(f"{Fore.RED}Error during data tokenization and encoding: {e}{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}Make sure that all texts are strings and not missing. If you have non-English texts, ensure the tokenizer supports them.{Style.RESET_ALL}")
             raise e
 
     def __getitem__(self, idx):
@@ -114,7 +119,9 @@ def train_model(train_dataset, val_dataset, epochs, batch_size, warmup_steps, we
         return model, trainer, eval_result
     except Exception as e:
         print(f"{Fore.RED}Model training failed: {e}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Check the model parameters and dataset integrity. Ensure the batch size and learning rate are appropriately set for your hardware capabilities.{Style.RESET_ALL}")
         return None, None, None
+
 
 def auto_train(train_dataset, val_dataset, num_iterations):
     try:
@@ -207,6 +214,8 @@ def save_model(model, params, all_results):
             print(f"{Fore.YELLOW}Model saving cancelled by the user.{Style.RESET_ALL}")
     except Exception as e:
         print(f"{Fore.RED}Failed to save model: {e}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Ensure you have write permissions to the selected directory and sufficient disk space.{Style.RESET_ALL}")
+
 
 def load_model():
     try:
