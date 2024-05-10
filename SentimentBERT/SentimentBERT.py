@@ -24,7 +24,6 @@ def safe_load_dataset(dataset_name):
         print(f"{Fore.YELLOW}Please check if the dataset name '{dataset_name}' is correct and available. You may also want to check your network connection if it's an online dataset.{Style.RESET_ALL}")
         return None
 
-
 def prepare_data(dataset):
     try:
         print(f"{Fore.BLUE}Preparing data...{Style.RESET_ALL}")
@@ -36,7 +35,6 @@ def prepare_data(dataset):
         print(f"{Fore.RED}Error during data preparation: {e}{Style.RESET_ALL}")
         print(f"{Fore.YELLOW}Check if the dataset is properly formatted. Ensure columns 'train' and 'test' exist and contain the necessary data.{Style.RESET_ALL}")
         return None, None
-
 
 class SentimentDataset(Dataset):
     def __init__(self, texts, labels, tokenizer):
@@ -95,7 +93,12 @@ def train_model(train_dataset, val_dataset, epochs, batch_size, warmup_steps, we
             weight_decay=weight_decay,
             logging_dir='./logs',
             logging_steps=10,
-            evaluation_strategy="epoch"
+            eval_steps=50,
+            save_steps=50,
+            evaluation_strategy="steps",
+            load_best_model_at_end=True,
+            metric_for_best_model='f1',
+            greater_is_better=True
         )
         print(f"{Fore.GREEN}Training arguments set.{Style.RESET_ALL}")
 
@@ -121,7 +124,6 @@ def train_model(train_dataset, val_dataset, epochs, batch_size, warmup_steps, we
         print(f"{Fore.RED}Model training failed: {e}{Style.RESET_ALL}")
         print(f"{Fore.YELLOW}Check the model parameters and dataset integrity. Ensure the batch size and learning rate are appropriately set for your hardware capabilities.{Style.RESET_ALL}")
         return None, None, None
-
 
 def auto_train(train_dataset, val_dataset, num_iterations):
     try:
