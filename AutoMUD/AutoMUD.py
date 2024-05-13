@@ -2,7 +2,7 @@ import asyncio
 import logging
 import sys
 import telnetlib3
-from colorama import Fore, init, Style
+from colorama import Fore, init
 import openai
 import time
 import random
@@ -44,12 +44,15 @@ async def query_gpt(prompt):
         context_history.append({"role": "user", "content": prompt})
         context_history.append({"role": "assistant", "content": action})
         return action
+    except openai.error.OpenAIError as e:
+        logging.error(f"{Fore.RED}OpenAI error: {e}")
+        return "Error: Unable to generate response."
     except Exception as e:
-        logging.error(f"{Fore.RED}Error querying GPT: {e}")
-        return ""
+        logging.error(f"{Fore.RED}Unexpected error: {e}")
+        return "Error: An unexpected issue occurred."
 
 async def chat_with_bot():
-    global in_chat_mode, direct_input_mode, context_history
+    global in_chat_mode, direct_input_mode
     print(f"\n{Fore.CYAN}Chat Mode: Type 'exit' to return to the main menu.")
     in_chat_mode = True
     direct_input_mode = False
@@ -112,8 +115,11 @@ async def send_commands(writer, message_queue):
                     writer.write(action + "\r\n")
                     await writer.drain()
                     logging.info(f"{Fore.BLUE}Command sent: {action}")
+                except (ConnectionResetError, BrokenPipeError):
+                    logging.error(f"{Fore.RED}Connection error: Unable to send command.")
+                    is_connected = False
                 except Exception as e:
-                    logging.error(f"{Fore.RED}Error sending command: {e}")
+                    logging.error(f"{Fore.RED}Unexpected error: {e}")
         while not message_queue.empty():
             message_queue.get_nowait()
             message_queue.task_done()
@@ -143,8 +149,11 @@ async def listen_for_user_input(writer, message_queue):
                 writer.write(user_input + "\r\n")
                 await writer.drain()
                 logging.info(f"{Fore.BLUE}Direct command sent: {user_input}")
+            except (ConnectionResetError, BrokenPipeError):
+                logging.error(f"{Fore.RED}Connection error: Unable to send direct command.")
+                is_connected = False
             except Exception as e:
-                logging.error(f"{Fore.RED}Error sending direct command: {e}")
+                logging.error(f"{Fore.RED}Unexpected error: {e}")
         elif not direct_input_mode and user_input:
             priority_message = f"<PRIORITY DIRECTIVE> {user_input}"
             current_time = time.time()
@@ -165,10 +174,15 @@ async def start_client(host, port, start_in_direct_mode=False):
             listen_for_user_input(writer, message_queue),
         ]
         await asyncio.gather(*tasks)
-    except Exception as e:
-        logging.error(f"{Fore.RED}Error connecting to the server: {e}")
+    except (ConnectionRefusedError, TimeoutError) as e:
+        logging.error(f"{Fore.RED}Network error: {e}")
         is_connected = False
         print("\nConnection to the server failed. Switching to chat mode with AutoMUD.")
+        await chat_with_bot()
+    except Exception as e:
+        logging.error(f"{Fore.RED}Unexpected error: {e}")
+        is_connected = False
+        print("\nUnexpected error occurred. Switching to chat mode with AutoMUD.")
         await chat_with_bot()
 
 def set_system_message():
