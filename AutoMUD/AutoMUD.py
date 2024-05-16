@@ -26,7 +26,7 @@ is_connected = False
 
 async def query_gpt(prompt):
     global context_history, openai_model
-    max_tokens = 4096
+    max_tokens = 16384
     trim_threshold = 0.9 * max_tokens
 
     full_prompt = SYSTEM_MESSAGE + " ".join([msg['content'] for msg in context_history]) + prompt
@@ -82,6 +82,9 @@ async def read_server_messages(reader):
     except asyncio.IncompleteReadError:
         logging.error(f"{Fore.RED}Connection lost unexpectedly.")
         is_connected = False
+    except Exception as e:
+        logging.error(f"{Fore.RED}Unexpected error in reading server messages: {e}")
+        is_connected = False
     finally:
         await main_menu()
 
@@ -89,76 +92,91 @@ async def process_message_buffer(message_queue):
     global message_buffer, is_connected
     last_process_time = time.time()
     while is_connected:
-        buffer_delay = random.uniform(5, 15)
-        current_time = time.time()
-        time_since_last_process = current_time - last_process_time
-        if time_since_last_process >= buffer_delay:
-            messages_to_process = [(timestamp, msg) for (timestamp, msg) in message_buffer if current_time - timestamp >= buffer_delay]
-            if messages_to_process:
-                last_process_time = current_time
-                context_update = " ".join([msg for _, msg in messages_to_process])
-                await message_queue.put(context_update)
-                message_buffer = [(timestamp, msg) for (timestamp, msg) in message_buffer if current_time - timestamp < buffer_delay]
-        await asyncio.sleep(1)
+        try:
+            buffer_delay = random.uniform(5, 10)
+            current_time = time.time()
+            time_since_last_process = current_time - last_process_time
+            if time_since_last_process >= buffer_delay:
+                messages_to_process = [(timestamp, msg) for (timestamp, msg) in message_buffer if current_time - timestamp >= buffer_delay]
+                if messages_to_process:
+                    last_process_time = current_time
+                    context_update = " ".join([msg for _, msg in messages_to_process])
+                    await message_queue.put(context_update)
+                    message_buffer = [(timestamp, msg) for (timestamp, msg) in message_buffer if current_time - timestamp < buffer_delay]
+            await asyncio.sleep(1)
+        except Exception as e:
+            logging.error(f"{Fore.RED}Unexpected error in processing message buffer: {e}")
+            is_connected = False
+            await main_menu()
 
 async def send_commands(writer, message_queue):
     global direct_input_mode, is_connected
     while is_connected:
-        if direct_input_mode:
-            await asyncio.sleep(1)
-            continue
-        context_update = await message_queue.get()
-        if not direct_input_mode:
-            action = await query_gpt(context_update)
-            if action:
-                try:
-                    writer.write(action + "\r\n")
-                    await writer.drain()
-                    logging.info(f"{Fore.BLUE}Command sent: {action}")
-                except (ConnectionResetError, BrokenPipeError):
-                    logging.error(f"{Fore.RED}Connection error: Unable to send command.")
-                    is_connected = False
-                except Exception as e:
-                    logging.error(f"{Fore.RED}Unexpected error: {e}")
-        while not message_queue.empty():
-            message_queue.get_nowait()
-            message_queue.task_done()
+        try:
+            if direct_input_mode:
+                await asyncio.sleep(1)
+                continue
+            context_update = await message_queue.get()
+            if not direct_input_mode:
+                action = await query_gpt(context_update)
+                if action:
+                    try:
+                        writer.write(action + "\r\n")
+                        await writer.drain()
+                        logging.info(f"{Fore.BLUE}Command sent: {action}")
+                    except (ConnectionResetError, BrokenPipeError):
+                        logging.error(f"{Fore.RED}Connection error: Unable to send command.")
+                        is_connected = False
+                    except Exception as e:
+                        logging.error(f"{Fore.RED}Unexpected error: {e}")
+            while not message_queue.empty():
+                message_queue.get_nowait()
+                message_queue.task_done()
+        except Exception as e:
+            logging.error(f"{Fore.RED}Unexpected error in sending commands: {e}")
+            is_connected = False
+            await main_menu()
 
 async def listen_for_user_input(writer, message_queue):
     global message_buffer, direct_input_mode, context_history, is_connected
     while True:
-        if not is_connected:
-            break
-        user_input = await asyncio.to_thread(input, "Type your message or '!togglemode' to switch modes: ")
+        try:
+            if not is_connected:
+                break
+            user_input = await asyncio.to_thread(input, "Type your message or '!togglemode' to switch modes: ")
 
-        if user_input == "!clear":
-            context_history.clear()
-            print(f"{Fore.GREEN}Context history cleared.")
-            continue
+            if user_input == "!clear":
+                context_history.clear()
+                print(f"{Fore.GREEN}Context history cleared.")
+                continue
 
-        if user_input == "!togglemode":
-            direct_input_mode = not direct_input_mode
-            mode = "Direct Input" if direct_input_mode else "Bot Driven"
-            print(f"Mode switched to: {mode}")
-            if not direct_input_mode:
-                message_queue.put_nowait("Consolidated or latest state update")
-            continue
+            if user_input == "!togglemode":
+                direct_input_mode = not direct_input_mode
+                mode = "Direct Input" if direct_input_mode else "Bot Driven"
+                print(f"Mode switched to: {mode}")
+                if not direct_input_mode:
+                    message_queue.put_nowait("Consolidated or latest state update")
+                continue
 
-        if direct_input_mode and user_input:
-            try:
-                writer.write(user_input + "\r\n")
-                await writer.drain()
-                logging.info(f"{Fore.BLUE}Direct command sent: {user_input}")
-            except (ConnectionResetError, BrokenPipeError):
-                logging.error(f"{Fore.RED}Connection error: Unable to send direct command.")
-                is_connected = False
-            except Exception as e:
-                logging.error(f"{Fore.RED}Unexpected error: {e}")
-        elif not direct_input_mode and user_input:
-            priority_message = f"<PRIORITY DIRECTIVE> {user_input}"
-            current_time = time.time()
-            message_buffer.append((current_time, priority_message))
-            logging.info(f"{Fore.YELLOW}Priority user message added to buffer: '{priority_message}'")
+            if direct_input_mode and user_input:
+                try:
+                    writer.write(user_input + "\r\n")
+                    await writer.drain()
+                    logging.info(f"{Fore.BLUE}Direct command sent: {user_input}")
+                except (ConnectionResetError, BrokenPipeError):
+                    logging.error(f"{Fore.RED}Connection error: Unable to send direct command.")
+                    is_connected = False
+                except Exception as e:
+                    logging.error(f"{Fore.RED}Unexpected error: {e}")
+            elif not direct_input_mode and user_input and is_connected:
+                priority_message = f"<PRIORITY DIRECTIVE> {user_input}"
+                current_time = time.time()
+                message_buffer.append((current_time, priority_message))
+                logging.info(f"{Fore.YELLOW}Priority user message added to buffer: '{priority_message}'")
+        except Exception as e:
+            logging.error(f"{Fore.RED}Unexpected error in listening for user input: {e}")
+            is_connected = False
+            await main_menu()
 
 async def start_client(host, port, start_in_direct_mode=False):
     global direct_input_mode, is_connected
@@ -184,6 +202,8 @@ async def start_client(host, port, start_in_direct_mode=False):
         is_connected = False
         print("\nUnexpected error occurred. Switching to chat mode with AutoMUD.")
         await chat_with_bot()
+    finally:
+        await main_menu()
 
 def set_system_message():
     global SYSTEM_MESSAGE
@@ -191,6 +211,11 @@ def set_system_message():
     print(SYSTEM_MESSAGE)
     SYSTEM_MESSAGE = input("Enter new system message: ")
     print("System message updated.")
+
+def clear_token_memory():
+    global context_history
+    context_history.clear()
+    print(f"{Fore.GREEN}Token memory cleared.")
 
 async def main_menu():
     global HOST, PORT, openai_model, direct_input_mode, is_connected
@@ -208,7 +233,8 @@ async def main_menu():
         print(f"  {Fore.YELLOW}6. Set OpenAI API Key")
         print(f"  {Fore.YELLOW}7. Set OpenAI Model (Current: {Fore.GREEN}{openai_model})")
         print(f"  {Fore.YELLOW}8. Set System Message")
-        print(f"{Fore.RED}9. Exit")
+        print(f"  {Fore.YELLOW}9. Clear Token Memory")
+        print(f"{Fore.RED}10. Exit")
 
         choice = input(f"{Fore.CYAN}Enter your choice: ")
         if choice == '1':
@@ -232,6 +258,8 @@ async def main_menu():
         elif choice == '8':
             set_system_message()
         elif choice == '9':
+            clear_token_memory()
+        elif choice == '10':
             print(f"{Fore.GREEN}Exiting...")
             sys.exit()
         else:
