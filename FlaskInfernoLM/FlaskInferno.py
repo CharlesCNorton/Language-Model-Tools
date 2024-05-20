@@ -1,10 +1,22 @@
 from flask import Flask, request, jsonify, render_template_string
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, StoppingCriteria, StoppingCriteriaList
 import torch
 import traceback
+import tkinter as tk
+from tkinter import filedialog
 import re
 
 inferno_lm = None
+
+class StopOnUser(StoppingCriteria):
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+        self.stop_token_id = self.tokenizer.encode("User:", add_special_tokens=False)
+
+    def __call__(self, input_ids, scores, **kwargs):
+        if input_ids[0][-len(self.stop_token_id):].tolist() == self.stop_token_id:
+            return True
+        return False
 
 class InfernoLM:
     def __init__(self, device="cuda", precision="float16", model_path=None, verbose=False):
@@ -23,13 +35,20 @@ class InfernoLM:
         model.to(device=self.device, dtype=torch.float16 if self.precision == "float16" else torch.float32)
         return tokenizer, model
 
-    def generate_response(self, user_input, max_length=1000):
+    def generate_response(self, messages, max_length=1000):
         try:
-            print(f"Received user input: {user_input}")
-            context_history = f"User: {user_input}\nAssistant: "
+            user_input = messages[-1]["content"] if messages[-1]["role"] == "user" else ""
+            context_history = ""
+            for message in messages:
+                if message["role"] == "user":
+                    context_history += f"User: {message['content']}\n"
+                elif message["role"] == "assistant":
+                    context_history += f"Assistant: {message['content']}\n"
 
             inputs = self.tokenizer.encode_plus(context_history, return_tensors='pt', padding=True, truncation=True, max_length=4096)
             inputs = inputs.to(self.device)
+
+            stop_on_user = StopOnUser(self.tokenizer)
 
             generation_config = {
                 'input_ids': inputs['input_ids'],
@@ -40,7 +59,8 @@ class InfernoLM:
                 'pad_token_id': self.tokenizer.eos_token_id,
                 'do_sample': True,
                 'num_beams': 3,
-                'early_stopping': True
+                'early_stopping': True,
+                'stopping_criteria': StoppingCriteriaList([stop_on_user])
             }
 
             outputs = self.model.generate(**generation_config)
@@ -60,6 +80,7 @@ class InfernoLM:
             split_text = generated_text.split(f"User: {user_input}")
             if len(split_text) > 1:
                 extracted = split_text[1].split("User:")[0].strip()
+                extracted = re.sub(r'^Assistant:\s*', '', extracted).strip()
                 print(f"Extracted response: {extracted}")
                 return extracted
             else:
@@ -73,35 +94,6 @@ class InfernoLM:
             return error_message
 
 app = Flask(__name__)
-
-def calculate_tokens(messages):
-    total_tokens = 50000
-    for message in messages:
-        content = message['content']
-        if isinstance(content, str):
-            total_tokens += len(tokenizer.encode(content))
-        elif isinstance(content, list):
-            total_tokens += sum(len(tokenizer.encode(item['text'])) for item in content if 'text' in item)
-    return total_tokens
-
-def update_messages(messages):
-    while messages and messages[0]["role"] == "system":
-        messages.pop(0)
-    messages.insert(0, {"role": "system", "content": state["primary_system_message"]})
-    return messages
-
-def truncate_messages(messages, target_tokens, system_message_tokens):
-    total_tokens = calculate_tokens(messages)
-    total_tokens += system_message_tokens
-    while total_tokens > target_tokens and len(messages) > 2:
-        if messages[-1]['role'] == 'system':
-            break
-        removed_message_tokens = len(tokenizer.encode(messages[-1]['content']))
-        del messages[-1]
-        total_tokens -= removed_message_tokens
-    if total_tokens > target_tokens:
-        messages.insert(1, {"role": "system", "content": f"Message truncated to save tokens. Over limit by {total_tokens - target_tokens} tokens."})
-    return messages
 
 @app.route('/')
 def index():
@@ -247,12 +239,10 @@ def chat():
         data = request.get_json()
         print(f"Received data: {data}")
 
-        user_input = data["messages"][-1]["content"] if data["messages"][-1]["role"] == "user" else ""
-        print(f"User input extracted: {user_input}")
-
-        response_content = inferno_lm.generate_response(user_input)
+        messages = data["messages"]
+        response_content = inferno_lm.generate_response(messages)
         if isinstance(response_content, str):
-            return jsonify({"content": response_content})
+            return jsonify({"content": "Assistant: " + response_content})
         else:
             return jsonify({"error": "Failed to generate a response"}), 500
     except Exception as e:
@@ -269,8 +259,14 @@ def back_message():
 def clear_history():
     return jsonify({"success": True, "message": "History cleared"})
 
+def select_folder():
+    root = tk.Tk()
+    root.withdraw()
+    folder_selected = filedialog.askdirectory()
+    return folder_selected
+
 if __name__ == '__main__':
-    model_path = input("Enter the path to your local model: ")
+    model_path = select_folder()
     inferno_lm = InfernoLM(model_path=model_path, device="cuda", precision="float16")
 
     choice = input("Run server for local access only (1) or network-wide access (2)? Enter 1 or 2: ")
