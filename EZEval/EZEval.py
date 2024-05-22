@@ -81,6 +81,7 @@ class ModelEvaluator:
 
     def evaluate_model(self):
         try:
+            print(Fore.YELLOW + Style.BRIGHT + f"Starting model evaluation for directory: {self.model_directory}" + Style.RESET_ALL)
             model = ModelLoader.load_model(self.model_directory)
             self.tokenizer = ModelLoader.load_tokenizer(self.model_directory)
 
@@ -122,6 +123,7 @@ class ModelEvaluator:
 
     def tokenize_function(self, examples):
         try:
+            print(Fore.YELLOW + Style.BRIGHT + "Tokenizing examples..." + Style.RESET_ALL)
             return self.tokenizer(examples["text"], padding="max_length", truncation=True, max_length=256)
         except Exception as e:
             logging.error(Fore.RED + Style.BRIGHT + f"Error tokenizing examples: {e}" + Style.RESET_ALL)
@@ -156,22 +158,27 @@ def main_menu():
                 else:
                     results = []
                     for model_directory in model_directories:
-                        print(Fore.YELLOW + Style.BRIGHT + f"Evaluating model from directory: {model_directory}" + Style.RESET_ALL)
-                        evaluator = ModelEvaluator(model_directory, evaluation_dataset)
-                        eval_results = evaluator.evaluate_model()
-                        results.append([model_directory] + [f"{value:.4f}" for value in eval_results.values()])
+                        try:
+                            print(Fore.YELLOW + Style.BRIGHT + f"Evaluating model from directory: {model_directory}" + Style.RESET_ALL)
+                            evaluator = ModelEvaluator(model_directory, evaluation_dataset)
+                            eval_results = evaluator.evaluate_model()
+                            results.append([model_directory] + [f"{value:.4f}" for value in eval_results.values()])
+                        except Exception as e:
+                            print(Fore.RED + Style.BRIGHT + f"Failed to evaluate model from directory: {model_directory}. Error: {e}" + Style.RESET_ALL)
+                            continue
 
-                    headers = ["Model"] + list(eval_results.keys())
-                    min_eval_loss = min(float(result[1]) for result in results)
-                    table_data = []
-                    for result in results:
-                        if float(result[1]) == min_eval_loss:
-                            result[1] = Fore.GREEN + result[1] + Style.RESET_ALL
-                        table_data.append(result)
+                    if results:
+                        headers = ["Model"] + list(eval_results.keys())
+                        min_eval_loss = min(float(result[1]) for result in results)
+                        table_data = []
+                        for result in results:
+                            if float(result[1]) == min_eval_loss:
+                                result[1] = Fore.GREEN + result[1] + Style.RESET_ALL
+                            table_data.append(result)
 
-                    table = tabulate(table_data, headers, tablefmt="grid")
-                    print(Fore.BLUE + Back.WHITE + Style.BRIGHT + "\nEvaluation Results:" + Style.RESET_ALL)
-                    print(table)
+                        table = tabulate(table_data, headers, tablefmt="grid")
+                        print(Fore.BLUE + Back.WHITE + Style.BRIGHT + "\nEvaluation Results:" + Style.RESET_ALL)
+                        print(table)
             elif choice == "4":
                 print(Fore.GREEN + Style.BRIGHT + "Exiting the program. Goodbye!" + Style.RESET_ALL)
                 break
