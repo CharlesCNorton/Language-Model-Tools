@@ -185,6 +185,7 @@ class Nightingale:
             print(f"\n{Fore.BLUE}{Style.BRIGHT}======= {Fore.MAGENTA}Nightingale {Fore.BLUE}======={Style.RESET_ALL}")
             print(f"{Fore.CYAN}{Style.BRIGHT}1.{Style.RESET_ALL} Select Model Path {Fore.YELLOW}(Point to a Microsoft Florence model){Style.RESET_ALL}")
             print(f"{Fore.CYAN}{Style.BRIGHT}2.{Style.RESET_ALL} Select Image {Fore.YELLOW}(Load an image file){Style.RESET_ALL}")
+            print(f"{Fore.BLUE}{Style.BRIGHT}========================={Style.RESET_ALL}")
             print(f"{Fore.CYAN}{Style.BRIGHT}3.{Style.RESET_ALL} Analyze Image {Fore.YELLOW}(Enter a custom task prompt for analysis){Style.RESET_ALL}")
             print(f"{Fore.CYAN}{Style.BRIGHT}4.{Style.RESET_ALL} Dense Region Captioning {Fore.YELLOW}(Generate captions for dense regions in the image){Style.RESET_ALL}")
             print(f"{Fore.CYAN}{Style.BRIGHT}5.{Style.RESET_ALL} Object Detection {Fore.YELLOW}(Detect objects and draw bounding boxes){Style.RESET_ALL}")
@@ -192,6 +193,7 @@ class Nightingale:
             print(f"{Fore.CYAN}{Style.BRIGHT}7.{Style.RESET_ALL} Open Vocabulary Detection {Fore.YELLOW}(Detect objects using a provided phrase){Style.RESET_ALL}")
             print(f"{Fore.CYAN}{Style.BRIGHT}8.{Style.RESET_ALL} OCR {Fore.YELLOW}(Extract text from the image){Style.RESET_ALL}")
             print(f"{Fore.CYAN}{Style.BRIGHT}9.{Style.RESET_ALL} OCR with Region {Fore.YELLOW}(Extract text and highlight regions){Style.RESET_ALL}")
+            print(f"{Fore.BLUE}{Style.BRIGHT}========================={Style.RESET_ALL}")
             print(f"{Fore.RED}{Style.BRIGHT}10.{Style.RESET_ALL} Exit")
             print(f"{Fore.BLUE}{Style.BRIGHT}========================={Style.RESET_ALL}")
 
@@ -220,6 +222,7 @@ class Nightingale:
                 break
             else:
                 print(f"{Fore.RED}{Style.BRIGHT}Invalid option. Please try again.{Style.RESET_ALL}")
+
 
     def select_image(self):
         image_path = self.select_image_path()
