@@ -1,0 +1,9 @@
+torch
+transformers
+Pillow
+requests
+matplotlib
+numpy
+colorama
+tk
+flash-attention
