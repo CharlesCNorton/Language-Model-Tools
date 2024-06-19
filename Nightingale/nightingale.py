@@ -252,6 +252,8 @@ class Nightingale:
                 task_prompt = input(f"{Fore.CYAN}{Style.BRIGHT}Enter the task prompt (type 'menu' to return to main menu): {Style.RESET_ALL}")
                 if task_prompt.lower() == 'menu':
                     break
+                if task_prompt and task_prompt[0].islower():
+                    task_prompt = task_prompt[0].upper() + task_prompt[1:]
                 results = self.run_example(task_prompt, image=self.current_image)
                 print(f"{Fore.GREEN}{Style.BRIGHT}Analysis Results:{Style.RESET_ALL}")
                 for key, value in results.items():
