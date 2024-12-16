@@ -43,7 +43,7 @@ class ChatClient:
                 if user_input.lower() == 'quit':
                     break
                 elif user_input.lower() == '!clear':
-                    chat_history = []  # Clearing the chat history
+                    chat_history = []
                     print(Fore.GREEN + "Chat history cleared.")
                     continue
 

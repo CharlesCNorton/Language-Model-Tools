@@ -19,7 +19,6 @@ import whisper
 
 init(autoreset=True)
 
-# Initialize logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -32,9 +31,8 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 warnings.filterwarnings("ignore")
 
-fs = 44100  # Sampling frequency
+fs = 44100
 
-# Load the Whisper model globally
 try:
     whisper_model = whisper.load_model("base", device="cuda" if torch.cuda.is_available() else "cpu")
     logging.info("Whisper model loaded successfully.")
@@ -55,7 +53,7 @@ class StopOnUserPrompt(StoppingCriteria):
     def __call__(self, input_ids, scores, **kwargs):
         if input_ids.shape[-1] < len(self.user_prompt_id):
             return False
-        # Check if the last tokens match the user prompt
+
         if list(input_ids[0][-len(self.user_prompt_id):].cpu().numpy()) == self.user_prompt_id:
             return True
         return False
@@ -104,11 +102,15 @@ class InfernoLM:
         """Loads the language model and tokenizer."""
         if not self.model_path:
             self.logger.error("No model path selected.")
+            print(Fore.RED + "No model path selected. Please select a valid model path.")
             return
+
         print(Fore.YELLOW + "Loading model and tokenizer...")
+
         try:
             if self.debug_mode:
                 self.logger.debug("Loading tokenizer...")
+
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_path,
                 trust_remote_code=self.trust_remote_code
@@ -125,12 +127,14 @@ class InfernoLM:
             if self.debug_mode:
                 self.logger.debug("Tokenizer loaded successfully.")
                 self.logger.debug("Loading model...")
+
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_path,
                 trust_remote_code=self.trust_remote_code,
                 torch_dtype=torch.float16 if self.precision == "float16" else torch.float32,
                 low_cpu_mem_usage=True
             )
+
             if self.debug_mode:
                 self.logger.debug("Model loaded successfully.")
 
@@ -154,9 +158,20 @@ class InfernoLM:
 
             self.model_loaded = True
             print(Fore.GREEN + "Model and tokenizer loaded successfully.")
+
         except Exception as e:
             self.logger.error(f"Error loading model and tokenizer: {str(e)}")
-            self.model_loaded = False
+            print(Fore.RED + f"Error loading model: {str(e)}")
+
+            print(Fore.YELLOW + "Would you like to try again? (y/n)")
+            retry_choice = input(Fore.GREEN + "> ").strip().lower()
+
+            if retry_choice == "y":
+
+                self.load_model()
+            else:
+                print(Fore.CYAN + "Returning to the main menu...")
+                self.model_loaded = False
 
     def unload_model(self):
         """Unloads the model and frees up resources."""
@@ -233,7 +248,7 @@ class InfernoLM:
     def record_audio(self, recording_list):
         """Records audio from the user."""
         try:
-            duration = 10  # Max duration in seconds
+            duration = 10
             recording = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype='int16')
             recording_list.append(recording)
             sd.wait()
@@ -289,7 +304,7 @@ class InfernoLM:
         generation_config = {
             'input_ids': inputs['input_ids'],
             'attention_mask': inputs['attention_mask'],
-            'max_length': len(inputs['input_ids'][0]) + 500,
+            'max_length': len(inputs['input_ids'][0]) + 1000,
             'temperature': 0.7,
             'top_p': 0.9,
             'top_k': 40,
